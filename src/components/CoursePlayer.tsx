@@ -17,25 +17,42 @@ export default function CoursePlayer({
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [pdfs, setPdfs] = useState<File[]>([]);
 
+  // Create blob URL only when activeFile changes, never revoke while playing
   useEffect(() => {
-    if (!activeFile) return;
+    if (!activeFile) {
+      setVideoUrl(null);
+      return;
+    }
+
     const url = URL.createObjectURL(activeFile);
     setVideoUrl(url);
 
-    const dir = activeFile.webkitRelativePath.substring(0, activeFile.webkitRelativePath.lastIndexOf('/'));
-    const related = allFiles.filter(
-      f => f.name.toLowerCase().endsWith('.pdf') && f.webkitRelativePath.startsWith(dir)
-    );
-    setPdfs(related);
+    return () => {
+      URL.revokeObjectURL(url);
+    };
+  }, [activeFile]);
 
-    return () => URL.revokeObjectURL(url);
+  // Find related PDFs whenever activeFile or the full file list changes
+  useEffect(() => {
+    if (!activeFile) {
+      setPdfs([]);
+      return;
+    }
+    const dir = activeFile.webkitRelativePath.substring(
+      0, activeFile.webkitRelativePath.lastIndexOf('/')
+    );
+    setPdfs(
+      allFiles.filter(
+        f => f.name.toLowerCase().endsWith('.pdf') && f.webkitRelativePath.startsWith(dir)
+      )
+    );
   }, [activeFile, allFiles]);
 
+  // Auto-play whenever the video URL changes (new lesson selected)
   useEffect(() => {
-    if (videoUrl && videoRef.current) {
-      videoRef.current.load();
-      videoRef.current.play().catch(() => {});
-    }
+    const el = videoRef.current;
+    if (!el || !videoUrl) return;
+    el.play().catch(() => {/* autoplay blocked by browser policy – user can press play */});
   }, [videoUrl]);
 
   if (!activeFile) {
@@ -71,12 +88,17 @@ export default function CoursePlayer({
           <h2 className="player-lesson-title">{title}</h2>
         </div>
 
-        {/* Video */}
+        {/* Video – key forces a clean remount when lesson changes */}
         <div className="video-card">
           <div className="video-wrapper">
-            <video ref={videoRef} controls key={videoUrl ?? ''}>
-              {videoUrl && <source src={videoUrl} />}
-            </video>
+            <video
+              ref={videoRef}
+              key={videoUrl ?? 'empty'}
+              src={videoUrl ?? undefined}
+              controls
+              preload="metadata"
+              style={{ width: '100%', height: '100%', display: 'block' }}
+            />
           </div>
         </div>
 
@@ -96,7 +118,7 @@ export default function CoursePlayer({
                     target="_blank"
                     rel="noreferrer"
                     className="pdf-item"
-                    onClick={() => setTimeout(() => URL.revokeObjectURL(pdfUrl), 5000)}
+                    onClick={() => setTimeout(() => URL.revokeObjectURL(pdfUrl), 10000)}
                   >
                     <div className="pdf-download-icon">
                       <Download size={12} />
@@ -113,7 +135,7 @@ export default function CoursePlayer({
         <CommentsSection lessonId={lessonId} />
       </div>
 
-      {/* Mark as complete bar */}
+      {/* Mark as complete */}
       <div className="mark-complete-bar">
         <button
           className={`mark-complete-btn ${isCompleted ? 'completed' : ''}`}
