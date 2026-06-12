@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronRight, Film, Folder, ArrowLeft } from 'lucide-react';
+import { ChevronDown, Folder, User } from 'lucide-react';
 import { TreeDir, TreeNode } from '../types';
 
 interface TreeSidebarProps {
@@ -8,6 +8,11 @@ interface TreeSidebarProps {
   activeFile: File | null;
   onFileSelect: (file: File) => void;
   onBack: () => void;
+  onNext?: () => void;
+  onPrev?: () => void;
+  hasNext?: boolean;
+  hasPrev?: boolean;
+  progress: number;
 }
 
 interface TreeItemProps {
@@ -26,12 +31,14 @@ function TreeItem({ name, node, depth, activeFile, onFileSelect }: TreeItemProps
     const isActive = activeFile === node;
     return (
       <button
-        className={`tree-file ${isActive ? 'active' : ''}`}
-        style={{ paddingLeft: `${12 + depth * 16}px` }}
+        className={`tree-chapter-item ${isActive ? 'active' : ''}`}
+        style={{ paddingLeft: `${28 + depth * 14}px` }}
         onClick={() => onFileSelect(node)}
       >
-        <Film size={13} className="tree-icon" />
-        <span>{label}</span>
+        <span className="chapter-circle">
+          <span className="chapter-circle-inner" />
+        </span>
+        <span className="chapter-text">{label}</span>
         {isActive && <span className="tree-playing-dot" />}
       </button>
     );
@@ -42,12 +49,12 @@ function TreeItem({ name, node, depth, activeFile, onFileSelect }: TreeItemProps
     <div className="tree-folder-group">
       <button
         className={`tree-folder ${open ? 'open' : ''}`}
-        style={{ paddingLeft: `${12 + depth * 16}px` }}
+        style={{ paddingLeft: `${16 + depth * 14}px` }}
         onClick={() => setOpen(o => !o)}
       >
-        <ChevronRight size={14} className="tree-chevron" />
-        <Folder size={14} className="tree-icon" />
-        <span>{name}</span>
+        {open ? <ChevronDown size={13} className="tree-chevron" /> : <ChevronDown size={13} className="tree-chevron" style={{ transform: 'rotate(-90deg)' }} />}
+        <Folder size={13} style={{ color: 'var(--warning)', flexShrink: 0 }} />
+        <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</span>
       </button>
       {open && (
         <div className="tree-children">
@@ -69,21 +76,81 @@ function sortedEntries(dir: TreeDir): [string, TreeNode][] {
   });
 }
 
-export default function TreeSidebar({ courseName, tree, activeFile, onFileSelect, onBack }: TreeSidebarProps) {
+export default function TreeSidebar({
+  courseName, tree, activeFile, onFileSelect, onBack,
+  onNext, onPrev, hasNext, hasPrev, progress,
+}: TreeSidebarProps) {
+  const [sectionOpen, setSectionOpen] = useState(true);
+
   return (
     <aside className="sidebar">
-      <div className="sidebar-header">
-        <button className="back-btn" onClick={onBack}>
-          <ArrowLeft size={16} />
-          Dashboard
-        </button>
-        <h2 className="sidebar-course-name">{courseName}</h2>
+      <div className="sidebar-instructor">
+        <div className="instructor-avatar">
+          <User size={36} />
+        </div>
+        <span className="instructor-name">{courseName}</span>
+
+        <div className="sidebar-nav-buttons">
+          <button
+            className="sidebar-prev-btn"
+            onClick={onPrev}
+            disabled={!hasPrev}
+          >
+            Previous
+          </button>
+          <button
+            className="sidebar-next-btn"
+            onClick={onNext}
+            disabled={!hasNext}
+          >
+            Next
+          </button>
+        </div>
+
+        <div className="sidebar-progress-bar">
+          <div className="sidebar-progress-fill" style={{ width: `${progress}%` }} />
+          <span className="sidebar-progress-label">{progress}%</span>
+        </div>
       </div>
 
       <div className="tree-root">
-        {sortedEntries(tree).map(([k, v]) => (
-          <TreeItem key={k} name={k} node={v} depth={0} activeFile={activeFile} onFileSelect={onFileSelect} />
-        ))}
+        <div className="tree-course-section">
+          <button
+            className="tree-course-toggle"
+            onClick={() => setSectionOpen(o => !o)}
+          >
+            {sectionOpen ? <ChevronDown size={14} /> : <ChevronDown size={14} style={{ transform: 'rotate(-90deg)' }} />}
+            {courseName}
+          </button>
+
+          {sectionOpen && (
+            <div className="tree-chapter-list">
+              {sortedEntries(tree).map(([k, v]) => (
+                <TreeItem
+                  key={k}
+                  name={k}
+                  node={v}
+                  depth={0}
+                  activeFile={activeFile}
+                  onFileSelect={onFileSelect}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div style={{ padding: '12px 16px', borderTop: '1px solid var(--border)', flexShrink: 0 }}>
+        <button
+          onClick={onBack}
+          style={{
+            background: 'none', border: 'none', color: 'var(--blue)',
+            fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer',
+            display: 'flex', alignItems: 'center', gap: 6,
+          }}
+        >
+          ← Back to Courses
+        </button>
       </div>
     </aside>
   );

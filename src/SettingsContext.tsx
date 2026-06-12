@@ -11,13 +11,13 @@ export interface ColorTheme {
 }
 
 const DEFAULT_THEME: ColorTheme = {
-  primary:     '#2563eb',
-  primaryLight:'#3b82f6',
-  primaryPale: '#eff6ff',
-  navy:        '#0f172a',
-  navyMid:     '#1e293b',
-  navySoft:    '#334155',
-  accent:      '#0ea5e9',
+  primary:     '#6B21A8',
+  primaryLight:'#7C3AED',
+  primaryPale: '#EDE9FE',
+  navy:        '#2D1458',
+  navyMid:     '#3B1578',
+  navySoft:    '#4C1D95',
+  accent:      '#7C3AED',
 };
 
 interface Settings {

@@ -1,4 +1,5 @@
-import { useRef, useState, useCallback } from 'react';
+import { useRef, useState, useCallback, useMemo } from 'react';
+import { Search } from 'lucide-react';
 import Navbar from './components/Navbar';
 import EmptyState from './components/EmptyState';
 import CourseGrid from './components/CourseGrid';
@@ -66,6 +67,19 @@ function parseCourses(files: File[]): CourseInfo[] {
     }));
 }
 
+function loadCompleted(courseName: string): Set<string> {
+  try {
+    const raw = localStorage.getItem('completed_' + courseName);
+    return raw ? new Set(JSON.parse(raw) as string[]) : new Set();
+  } catch {
+    return new Set();
+  }
+}
+
+function saveCompleted(courseName: string, set: Set<string>) {
+  localStorage.setItem('completed_' + courseName, JSON.stringify([...set]));
+}
+
 export default function App() {
   const [tab, setTab] = useState<Tab>('enrollments');
   const [allFiles, setAllFiles] = useState<File[]>([]);
@@ -74,6 +88,8 @@ export default function App() {
   const [activeTree, setActiveTree] = useState<TreeDir>({});
   const [activeFile, setActiveFile] = useState<File | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [completedFiles, setCompletedFiles] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
   const { setLastFolderPath } = useSettings();
 
@@ -110,12 +126,14 @@ export default function App() {
     setActiveCourse(name);
     setActiveTree(buildTree(allFiles, name));
     setActiveFile(null);
+    setCompletedFiles(loadCompleted(name));
   }
 
   function handleBack() {
     setActiveCourse(null);
     setActiveFile(null);
     setActiveTree({});
+    setSearch('');
   }
 
   function handleCoverChange(name: string, dataUrl: string) {
@@ -123,8 +141,28 @@ export default function App() {
     setCourses(prev => prev.map(c => c.name === name ? { ...c, coverImage: dataUrl } : c));
   }
 
+  function handleMarkComplete(fileName: string) {
+    if (!activeCourse) return;
+    setCompletedFiles(prev => {
+      const next = new Set(prev);
+      if (next.has(fileName)) {
+        next.delete(fileName);
+      } else {
+        next.add(fileName);
+      }
+      saveCompleted(activeCourse, next);
+      return next;
+    });
+  }
+
   const flatVideos = activeCourse ? flattenVideos(activeTree) : [];
   const activeIdx = activeFile ? flatVideos.indexOf(activeFile) : -1;
+
+  const progress = useMemo(() => {
+    if (!flatVideos.length) return 0;
+    const done = flatVideos.filter(f => completedFiles.has(f.name)).length;
+    return Math.round((done / flatVideos.length) * 100);
+  }, [flatVideos, completedFiles]);
 
   return (
     <div className="app">
@@ -134,6 +172,20 @@ export default function App() {
         onOpenSettings={() => setSettingsOpen(true)}
       />
 
+      {view === 'player' && activeCourse && (
+        <div className="course-header-bar">
+          <h1 className="course-header-title">{activeCourse}</h1>
+          <div className="header-search">
+            <Search size={14} className="header-search-icon" />
+            <input
+              placeholder="Search"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
+          </div>
+        </div>
+      )}
+
       <div className="layout">
         {view === 'player' && activeCourse && (
           <TreeSidebar
@@ -142,6 +194,11 @@ export default function App() {
             activeFile={activeFile}
             onFileSelect={setActiveFile}
             onBack={handleBack}
+            onNext={() => activeIdx < flatVideos.length - 1 && setActiveFile(flatVideos[activeIdx + 1])}
+            onPrev={() => activeIdx > 0 && setActiveFile(flatVideos[activeIdx - 1])}
+            hasNext={activeIdx < flatVideos.length - 1}
+            hasPrev={activeIdx > 0}
+            progress={progress}
           />
         )}
 
@@ -159,14 +216,13 @@ export default function App() {
             />
           )}
 
-          {view === 'player' && (
+          {view === 'player' && activeCourse && (
             <CoursePlayer
               activeFile={activeFile}
               allFiles={allFiles}
-              onNext={() => activeIdx < flatVideos.length - 1 && setActiveFile(flatVideos[activeIdx + 1])}
-              onPrev={() => activeIdx > 0 && setActiveFile(flatVideos[activeIdx - 1])}
-              hasNext={activeIdx < flatVideos.length - 1}
-              hasPrev={activeIdx > 0}
+              courseName={activeCourse}
+              onMarkComplete={handleMarkComplete}
+              completedFiles={completedFiles}
             />
           )}
         </main>

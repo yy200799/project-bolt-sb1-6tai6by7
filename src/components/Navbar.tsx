@@ -1,4 +1,5 @@
-import { BookOpen, Compass, User, Settings } from 'lucide-react';
+import { GraduationCap, Bell, ChevronDown, Settings } from 'lucide-react';
+import { useSettings } from '../SettingsContext';
 
 type NavTab = 'enrollments' | 'explore';
 
@@ -9,11 +10,12 @@ interface NavbarProps {
 }
 
 export default function Navbar({ activeTab, onTabChange, onOpenSettings }: NavbarProps) {
+  const { settings } = useSettings();
+
   return (
     <header className="navbar">
-      <div className="navbar-brand">
-        <BookOpen size={22} strokeWidth={2.5} />
-        <span>SCPC Platform</span>
+      <div className="navbar-logo">
+        <span>M</span>
       </div>
 
       <nav className="navbar-tabs">
@@ -21,30 +23,33 @@ export default function Navbar({ activeTab, onTabChange, onOpenSettings }: Navba
           className={`nav-tab ${activeTab === 'enrollments' ? 'active' : ''}`}
           onClick={() => onTabChange('enrollments')}
         >
-          Enrollments
-        </button>
-        <button
-          className={`nav-tab ${activeTab === 'explore' ? 'active' : ''}`}
-          onClick={() => onTabChange('explore')}
-        >
-          <Compass size={15} />
-          Explore
+          <GraduationCap size={15} />
+          Courses
         </button>
       </nav>
 
-      <div className="navbar-user">
-        <button
-          className="navbar-settings-btn"
-          onClick={onOpenSettings}
-          title="Settings"
-          aria-label="Open settings"
-        >
-          <Settings size={17} />
+      <div className="navbar-actions">
+        <button className="navbar-settings-btn" onClick={onOpenSettings} title="Settings" aria-label="Open settings">
+          <Settings size={16} />
         </button>
-        <div className="user-avatar">
-          <User size={16} />
+
+        <button className="navbar-icon-btn" title="Notifications">
+          <Bell size={17} />
+        </button>
+
+        <div className="navbar-divider" />
+
+        <div className="navbar-user">
+          <div className="user-avatar">
+            <span>{settings.lastFolderPath ? settings.lastFolderPath.charAt(0).toUpperCase() : 'S'}</span>
+          </div>
+          <ChevronDown size={13} />
         </div>
-        <span>Student</span>
+
+        <div className="navbar-lang">
+          EN
+          <ChevronDown size={12} />
+        </div>
       </div>
     </header>
   );
